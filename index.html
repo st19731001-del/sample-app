@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>うんこ回避ゲーム</title>
+    <style>
+        body { text-align: center; font-family: sans-serif; background: #eef; }
+        canvas { background: #87CEEB; border: 3px solid #333; display: block; margin: 20px auto; }
+        p { font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>🐶 うんこ回避ラン 💩</h1>
+    <p>【操作】スペースキー または 画面タップ でジャンプ！</p>
+    <canvas id="gameCanvas" width="600" height="200"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // プレイヤー
+        let player = { x: 80, y: 140, size: 30, dy: 0, gravity: 0.8, jumpPower: -12, isGrounded: true };
+        // 障害物（うんこ）
+        let obstacles = [];
+        let score = 0;
+        let gameOver = false;
+        let spawnTimer = 0;
+
+        function jump() {
+            if (player.isGrounded && !gameOver) {
+                player.dy = player.jumpPower;
+                player.isGrounded = false;
+            } else if (gameOver) {
+                resetGame();
+            }
+        }
+
+        // キー入力 & タップ対応
+        window.addEventListener("keydown", (e) => { if (e.code === "Space") jump(); });
+        window.addEventListener("touchstart", jump);
+
+        function update() {
+            if (gameOver) return;
+
+            // プレイヤーの重力処理
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+            // 地面判定
+            if (player.y >= 140) {
+                player.y = 140;
+                player.dy = 0;
+                player.isGrounded = true;
+            }
+
+            // うんこの生成（ランダムなタイミング）
+            spawnTimer++;
+            if (spawnTimer > Math.random() * 80 + 60) {
+                obstacles.push({ x: 600, y: 150, size: 20 });
+                spawnTimer = 0;
+            }
+
+            // うんこの移動＆当たり判定
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].x -= 5;
+
+                // 当たり判定 (簡易AABB)
+                if (
+                    player.x < obstacles[i].x + obstacles[i].size &&
+                    player.x + player.size > obstacles[i].x &&
+                    player.y < obstacles[i].y + obstacles[i].size &&
+                    player.y + player.size > obstacles[i].y
+                ) {
+                    gameOver = true;
+                }
+            }
+
+            // 画面外のうんこを削除＆スコア加算
+            if (obstacles.length > 0 && obstacles[0].x < -20) {
+                obstacles.shift();
+                score += 100;
+            }
+        }
+
+        function draw() {
+            // 背景・地面
+            ctx.fillStyle = "#87CEEB";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#8B5A2B";
+            ctx.fillRect(0, 170, canvas.width, 30);
+
+            // 前を歩く犬（演出用）
+            ctx.font = "30px serif";
+            ctx.fillText("🐕", 480, 160);
+
+            // プレイヤー
+            ctx.font = "30px serif";
+            ctx.fillText("🚶", player.x, player.y + 25);
+
+            // うんこ
+            for (let obs of obstacles) {
+                ctx.fillText("💩", obs.x, obs.y + 15);
+            }
+
+            // スコア表示
+            ctx.fillStyle = "#000";
+            ctx.font = "20px sans-serif";
+            ctx.fillText(`SCORE: ${score}`, 20, 30);
+
+            // ゲームオーバー表示
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "30px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER!", canvas.width / 2, 90);
+                ctx.font = "20px sans-serif";
+                ctx.fillText("タップかスペースでリトライ", canvas.width / 2, 130);
+                ctx.textAlign = "left";
+            }
+        }
+
+        function resetGame() {
+            player.y = 140;
+            player.dy = 0;
+            player.isGrounded = true;
+            obstacles = [];
+            score = 0;
+            gameOver = false;
+            spawnTimer = 0;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
